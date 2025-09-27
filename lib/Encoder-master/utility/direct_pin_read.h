@@ -79,11 +79,12 @@
 #define PIN_TO_BITMASK(pin)             digitalPinToPinName(pin)
 #define DIRECT_PIN_READ(base, pin)      nrf_gpio_pin_read(pin)
 
-#elif defined(ARDUINO_NANO_RP2040_CONNECT) || defined(ARDUINO_ARCH_RP2040)
+#elif defined(ARDUINO_ARCH_RP2040)
+  // Covers RP2040 and RP2350 (Pico, Pico W, Pico 2, etc.)
 #define IO_REG_TYPE                     pin_size_t
 #define PIN_TO_BASEREG(pin)             (0)
-#define PIN_TO_BITMASK(pin)             pin
-#define DIRECT_PIN_READ(base, pin)      digitalRead(pin)
+#define PIN_TO_BITMASK(pin)             (pin)
+#define DIRECT_PIN_READ(base, pin)      (gpio_get(pin) ? 1 : 0)
 
 #elif defined(__arc__) /* Arduino101/Genuino101 specifics */
 

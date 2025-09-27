@@ -89,6 +89,8 @@ void printToTFT(String message, int delayTime, int textSize) {
 
 void setup() {
   pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(ENCODER_PIN_A, INPUT_PULLUP);
+  pinMode(ENCODER_PIN_B, INPUT_PULLUP);
 
   // Start boot checks, power screen, check temperatures, log start up date
   s_boot();
@@ -189,33 +191,52 @@ void get_temp() {
   }
 }
 
+// Non-blocking timing variables
+unsigned long lastBlink = 0;
+unsigned long blinkInterval = 100; // ms
+unsigned long lastEncoderCheck = 0;
+unsigned long encoderInterval = 10; // ms
+unsigned long lastButtonCheck = 0;
+unsigned long buttonInterval = 10; // ms
+
 void loop() {
-  // Read the current position of the encoder
-  long newPosition = myEnc->read() / 4; // Divide by 4 if using quadrature encoder
+  unsigned long now = millis();
 
-  if (newPosition != oldPosition) {
-    if (newPosition > oldPosition) {
-      selectNextMenuItem();
-    } else {
-      selectPreviousMenuItem();
+  // Non-blocking encoder check
+  if (now - lastEncoderCheck >= encoderInterval) {
+    long newPosition = myEnc->read() / 4;
+    Serial.print("Raw encoder value: ");
+    Serial.println(newPosition);
+    if (newPosition != oldPosition) {
+      Serial.print("Encoder position changed: ");
+      Serial.print(oldPosition);
+      Serial.print(" -> ");
+      Serial.println(newPosition);
+      if (newPosition > oldPosition) {
+        Serial.println("Menu: Next item");
+        selectNextMenuItem();
+      } else {
+        Serial.println("Menu: Previous item");
+        selectPreviousMenuItem();
+      }
+      oldPosition = newPosition;
     }
-    oldPosition = newPosition;
+    lastEncoderCheck = now;
   }
 
-  bool currentButtonState = digitalRead(ENCODER_BUTTON_PIN);
-
-  // Check if the button state has changed from released to pressed
-  if (currentButtonState == LOW && previousButtonState == HIGH) {
-    unsigned long currentTime = millis();
-    if (currentTime - lastButtonPress > debounceDelay) {
-      // Button is pressed
-      executeMenuItem();
-      lastButtonPress = currentTime;
+  // Non-blocking button check
+  if (now - lastButtonCheck >= buttonInterval) {
+    bool currentButtonState = digitalRead(ENCODER_BUTTON_PIN);
+    if (currentButtonState == LOW && previousButtonState == HIGH) {
+      Serial.println("Encoder button pressed");
+      if (now - lastButtonPress > debounceDelay) {
+        executeMenuItem();
+        lastButtonPress = now;
+      }
     }
+    previousButtonState = currentButtonState;
+    lastButtonCheck = now;
   }
-
-  // Update the previous button state
-  previousButtonState = currentButtonState;
 }
 
 void startUI() {
