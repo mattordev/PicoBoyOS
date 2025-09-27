@@ -21,8 +21,7 @@ XPT2046_Touchscreen ts(TOUCH_CS); // Initialize the touch screen with the CS pin
 Encoder* myEnc; // Initialize the encoder
 
 // Wifi Vars
-const char* ssid = "SKYNEQLU";
-const char* password = "XwVw41rr7Tg8";
+#include "secrets.h"
 int wifiTimeout = 20000; // timeout in milliseconds
 bool offline = false;
 
