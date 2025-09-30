@@ -10,9 +10,9 @@
 #include "main.h"
 
 // Encoder Pins
-#define ENCODER_PIN_A 12
-#define ENCODER_PIN_B 13
-#define ENCODER_BUTTON_PIN 14
+#define ENCODER_PIN_A      12    // EC11 phase A
+#define ENCODER_PIN_B      13    // EC11 phase B
+#define ENCODER_BUTTON_PIN 14    // EC11 push-button
 bool previousButtonState = HIGH; // Initialize the previous button state as released
 
 // Hardware Vars
@@ -88,9 +88,11 @@ void printToTFT(String message, int delayTime, int textSize) {
 }
 
 void setup() {
-  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
   pinMode(ENCODER_PIN_A, INPUT_PULLUP);
   pinMode(ENCODER_PIN_B, INPUT_PULLUP);
+  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+
+  myEnc = new Encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 
   // Start boot checks, power screen, check temperatures, log start up date
   s_boot();
@@ -106,7 +108,7 @@ void blinkLED(int delayTime) {
 
 void s_boot() {
   // Start serial
-  Serial.begin(1155200);
+  Serial.begin(115200);
 
   myEnc = new Encoder (12, 13);
   pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
@@ -204,7 +206,7 @@ void loop() {
 
   // Non-blocking encoder check
   if (now - lastEncoderCheck >= encoderInterval) {
-    long newPosition = myEnc->read() / 4;
+    long newPosition = myEnc->read()/4;
     Serial.print("Raw encoder value: ");
     Serial.println(newPosition);
     if (newPosition != oldPosition) {
