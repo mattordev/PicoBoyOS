@@ -3,11 +3,12 @@
 // Include the libraries
 #include <WiFi.h>
 #include <SPI.h>
-#include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 
+#define ENCODER_DO_NOT_USE_INTERRUPTS
 #include <Encoder.h>
 #include "main.h"
+#include "ui/UIManager.h"
 
 // Encoder Pins
 #define ENCODER_PIN_A      12    // EC11 phase A
@@ -17,6 +18,8 @@ bool previousButtonState = HIGH; // Initialize the previous button state as rele
 
 // Hardware Vars
 TFT_eSPI tft = TFT_eSPI();
+UIManager ui(tft); // Create an instance of UIManager
+#define TOUCH_CS 22 // Chip select pin (T_CS) of touch screen
 XPT2046_Touchscreen ts(TOUCH_CS); // Initialize the touch screen with the CS pin
 Encoder* myEnc; // Initialize the encoder
 
@@ -27,20 +30,7 @@ bool offline = false;
 
 // TFT Pins
 #define TFT_CS 17  
-#define TOUCH_CS 22 // Chip select pin (T_CS) of touch screen
 
-
-
-// TFT display constants
-#define TEXT_HEIGHT 16 // Height of text to be printed
-#define YMAX 320 // Height of the display in pixels
-#define XMAX 480 // Width of the display in pixels
-#define MAX_LINES (YMAX / TEXT_HEIGHT) // Maximum number of lines that can be displayed
-#define HEADER_HEIGHT 40
-#define SIDEBAR_WIDTH 80
-#define MAIN_AREA_WIDTH (XMAX - SIDEBAR_WIDTH)
-#define MAIN_AREA_HEIGHT (YMAX - HEADER_HEIGHT)
-#define MESSAGE_AREA_HEIGHT 40
 
 // Menu items
 const char* menuItems[] = {"Status", "Items", "Data", "Radio"};
@@ -53,39 +43,6 @@ const unsigned long debounceDelay = 50; // milliseconds
 
 // Encoder position
 long oldPosition = -999;
-
-// Custom print function to handle both Serial and TFT output with a delay and optional text size
-void printToTFT(String message, int delayTime, int textSize) {
-  static int lineCount = 0; // Counter for the current line
-  static String lines[MAX_LINES]; // Array to store the lines
-  
-  Serial.println(message);
-
-  // Shift existing lines up
-  for (int i = 0; i < MAX_LINES - 1; i++) {
-    lines[i] = lines[i + 1];
-  }
-
-  // Add the new line
-  lines[MAX_LINES - 1] = message;
-
-  // Clear screen
-  tft.fillScreen(TFT_BLACK);
-
-  // Set text size globally
-  tft.setTextSize(textSize);
-
-  // Print lines to TFT
-  for (int i = 0; i < MAX_LINES; i++) {
-    tft.setCursor(0, i * TEXT_HEIGHT); // Set cursor position
-    tft.print(lines[i]); // Print line
-  }
-
-  blinkLED(1);
-
-  // Add a delay
-  delay(delayTime);
-}
 
 void setup() {
   pinMode(ENCODER_PIN_A, INPUT_PULLUP);
@@ -129,17 +86,17 @@ void s_boot() {
   ts.begin();
   ts.setRotation(1);
 
-  printToTFT("System: Starting PicoBoyOS v0.1", 2000); // Add a delay of 2000 milliseconds
-  printToTFT("System: Booting as new...", 2000); // Add a delay of 2000 milliseconds
-  printToTFT("System: Checking vitals...", 2000); 
+  ui.printToTFT("System: Starting PicoBoyOS v0.1", 2000); // Add a delay of 2000 milliseconds
+  ui.printToTFT("System: Booting as new...", 2000); // Add a delay of 2000 milliseconds
+  ui.printToTFT("System: Checking vitals...", 2000);
   get_temp();
   delay(400);
 
-  printToTFT("System: Checking active data stream...", 2000); 
+  ui.printToTFT("System: Checking active data stream...", 2000);
   // Check WiFi connection, connect if possible.
   offline = setup_wifi();
 
-  printToTFT("System: Boot complete. Starting UI...", 2500);
+  ui.printToTFT("System: Boot complete. Starting UI...", 2500);
 
   // Blink LED to indicate boot complete
   blinkLED(100);
@@ -152,7 +109,7 @@ void s_boot() {
 
 
   // Start the UI
-  startUI();
+  ui.startUI();
 }
 
 bool setup_wifi() {
@@ -164,14 +121,14 @@ bool setup_wifi() {
 
   if (WiFi.waitForConnectResult() == WL_CONNECTED) {
     // Connection established
-    printToTFT("System: PicoBoy is connected to WiFi network " + String(WiFi.SSID()), 2000); 
+    ui.printToTFT("System: PicoBoy is connected to WiFi network " + String(WiFi.SSID()), 2000); 
 
     // Print IP Address
-    printToTFT("System: Assigned IP Address: " + WiFi.localIP().toString(), 2000); 
+    ui.printToTFT("System: Assigned IP Address: " + WiFi.localIP().toString(), 2000); 
     return true;
   } else {
     // No connection established
-    printToTFT("System: PicoBoy is NOT connected to a WiFi network. Running in offline mode.", 2000); 
+    ui.printToTFT("System: PicoBoy is NOT connected to a WiFi network. Running in offline mode.", 2000); 
     return false;
   }
 }
@@ -184,7 +141,7 @@ void get_temp() {
     tempC = analogReadTemp(); // Get internal temperature
 
     // Print temperature readings
-    printToTFT("System: Temperature (ºC) = " + String(tempC), 2000); 
+    ui.printToTFT("System: Temperature (ºC) = " + String(tempC), 2000); 
 
     // Check if the temperature is within a reasonable range
     if (tempC > -20.0 && tempC < 150.0) {
@@ -216,10 +173,10 @@ void loop() {
       Serial.println(newPosition);
       if (newPosition > oldPosition) {
         Serial.println("Menu: Next item");
-        selectNextMenuItem();
+        ui.selectNextMenuItem();
       } else {
         Serial.println("Menu: Previous item");
-        selectPreviousMenuItem();
+        ui.selectPreviousMenuItem();
       }
       oldPosition = newPosition;
     }
@@ -232,137 +189,11 @@ void loop() {
     if (currentButtonState == LOW && previousButtonState == HIGH) {
       Serial.println("Encoder button pressed");
       if (now - lastButtonPress > debounceDelay) {
-        executeMenuItem();
+        ui.executeMenuItem();
         lastButtonPress = now;
       }
     }
     previousButtonState = currentButtonState;
     lastButtonCheck = now;
-  }
-}
-
-void startUI() {
-  // Draw the header
-  tft.fillRect(0, 0, XMAX, HEADER_HEIGHT, TFT_DARKGREEN);
-  tft.setCursor(10, 10);
-  tft.setTextColor(TFT_WHITE, TFT_DARKGREEN);
-  tft.setTextSize(2);
-  tft.print("PicoBoyOS v0.1");
-
-  // Draw the sidebar menu
-  drawSidebarMenu();
-
-  // Draw the main content area
-  drawMainContent();
-}
-
-void drawSidebarMenu() {
-  tft.fillRect(0, HEADER_HEIGHT, SIDEBAR_WIDTH, YMAX - HEADER_HEIGHT, TFT_DARKGREY);
-  tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
-  tft.setTextSize(2);
-
-  for (int i = 0; i < totalMenuItems; i++) {
-    tft.setCursor(10, HEADER_HEIGHT + i * TEXT_HEIGHT + 10);
-    if (i == selectedMenuItem) {
-      tft.setTextColor(TFT_BLACK, TFT_WHITE); // Highlight selected item
-    } else {
-      tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
-    }
-    tft.print(menuItems[i]);
-  }
-}
-
-void drawMainContent() {
-  tft.fillRect(SIDEBAR_WIDTH, HEADER_HEIGHT, MAIN_AREA_WIDTH, MAIN_AREA_HEIGHT, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE);
-
-  // Display content based on the selected menu item
-  if (selectedMenuItem == 0) {
-    // Status Screen
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-    tft.print("Status Screen");
-
-    // Filler content for status screen
-    tft.setTextSize(1);
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 40);
-    tft.print("Battery Level: 90%");
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 60);
-    tft.print("CPU Usage: 25%");
-    // Add more status details here
-  } else if (selectedMenuItem == 1) {
-    // Items Screen
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-    tft.print("Items Screen");
-
-    // Filler content for items screen
-    tft.setTextSize(1);
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 40);
-    tft.print("Item 1: 10");
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 60);
-    tft.print("Item 2: 5");
-    // Add more item details here
-  } else if (selectedMenuItem == 2) {
-    // Data Screen
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-    tft.print("Data Screen");
-
-    // Filler content for data screen
-    tft.setTextSize(1);
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 40);
-    tft.print("Data 1: 100");
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 60);
-    tft.print("Data 2: 200");
-    // Add more data details here
-  } else if (selectedMenuItem == 3) {
-    // Radio Screen
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-    tft.print("Radio Screen");
-
-    // Filler content for radio screen
-    tft.setTextSize(1);
-    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 40);
-    tft.print("Radio Station: 98.5 FM");
-    // Add more radio details here
-  }
-}
-
-void selectNextMenuItem() {
-  selectedMenuItem = (selectedMenuItem + 1) % totalMenuItems;
-  drawSidebarMenu();
-  drawMainContent();
-}
-
-void selectPreviousMenuItem() {
-  selectedMenuItem = (selectedMenuItem - 1 + totalMenuItems) % totalMenuItems;
-  drawSidebarMenu();
-  drawMainContent();
-}
-
-void executeMenuItem() {
-  // Execute action for the selected menu item
-  selectNextMenuItem();
-}
-
-void handleTouch(int x, int y) {
-  // For now, just print the touch coordinates
-  Serial.print("Touch at: ");
-  Serial.print(x);
-  Serial.print(", ");
-  Serial.println(y);
-
-  // Add touch handling logic based on coordinates
-  if (y < HEADER_HEIGHT) {
-    // Handle touches in the header area
-  } else if (x < SIDEBAR_WIDTH) {
-    // Handle touches in the sidebar menu area
-    int touchedItem = (y - HEADER_HEIGHT) / TEXT_HEIGHT;
-    if (touchedItem >= 0 && touchedItem < totalMenuItems) {
-      selectedMenuItem = touchedItem;
-      drawSidebarMenu();
-      drawMainContent();
-    }
-  } else {
-    // Handle touches in the main content area
   }
 }
