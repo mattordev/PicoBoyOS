@@ -1,6 +1,5 @@
-#include "UIManager.h"
 #include <Arduino.h>
-#include <TFT_eSPI.h>
+#include "UIManager.h"
 
 UIManager::UIManager(TFT_eSPI& display) : tft(display) {} // Constructor implementation
 
@@ -24,7 +23,7 @@ void UIManager::printToTFT(String message, int delayTime, int textSize) {
         tft.print(lines[i]);
     }
 
-    blinkLED(1);
+    //blinkLED(1);
     delay(delayTime);
 }
 
