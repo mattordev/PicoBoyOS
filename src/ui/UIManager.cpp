@@ -1,29 +1,35 @@
-#include <Arduino.h>
 #include "UIManager.h"
+#include <Arduino.h>
 
-UIManager::UIManager(TFT_eSPI& display) : tft(display) {} // Constructor implementation
+UIManager::UIManager(TFT_eSPI& display) : tft(display) {} // Constructor
+
+// Initialize TFT hardware
+void UIManager::initTFT() {
+    tft.init();
+    tft.setRotation(1);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+}
 
 void UIManager::printToTFT(String message, int delayTime, int textSize) {
     static String lines[YMAX / TEXT_HEIGHT];
 
     Serial.println(message);
 
-    // Shift existing lines up
+    // Shift lines up
     for (int i = 0; i < (YMAX / TEXT_HEIGHT) - 1; i++) {
-    lines[i] = lines[i + 1];
+        lines[i] = lines[i + 1];
     }
     lines[(YMAX / TEXT_HEIGHT) - 1] = message;
 
-  // Clear screen and redraw
+    // Clear screen and redraw
     tft.fillScreen(TFT_BLACK);
     tft.setTextSize(textSize);
-
     for (int i = 0; i < (YMAX / TEXT_HEIGHT); i++) {
         tft.setCursor(0, i * TEXT_HEIGHT);
         tft.print(lines[i]);
     }
 
-    //blinkLED(1);
     delay(delayTime);
 }
 
@@ -58,18 +64,13 @@ void UIManager::drawMainContent() {
     tft.setTextSize(2);
     tft.setTextColor(TFT_WHITE);
 
-    if (selectedMenuItem == 0) {
-        tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-        tft.print("Status Screen");
-    } else if (selectedMenuItem == 1) {
-        tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-        tft.print("Items Screen");
-    } else if (selectedMenuItem == 2) {
-        tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-        tft.print("Data Screen");
-    } else if (selectedMenuItem == 3) {
-        tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
-        tft.print("Radio Screen");
+    tft.setCursor(SIDEBAR_WIDTH + 10, HEADER_HEIGHT + 10);
+    switch (selectedMenuItem) {
+        case 0: tft.print("Status Screen"); break;
+        case 1: tft.print("Items Screen"); break;
+        case 2: tft.print("Data Screen"); break;
+        case 3: tft.print("Radio Screen"); break;
+        case 4: tft.print("Settings Screen"); break;
     }
 }
 
@@ -89,25 +90,22 @@ void UIManager::executeMenuItem() {
     selectNextMenuItem();
 }
 
-void UIManager::handleTouch(int x, int y){
-    // For now, just print the touch coordinates
+void UIManager::handleTouch(int x, int y) {
     Serial.print("Touch at: ");
     Serial.print(x);
     Serial.print(", ");
     Serial.println(y);
 
-    // Add touch handling logic based on coordinates
     if (y < HEADER_HEIGHT) {
-        // Handle touches in the header area
+        // header touch area
     } else if (x < SIDEBAR_WIDTH) {
-        // Handle touches in the sidebar menu area
         int touchedItem = (y - HEADER_HEIGHT) / TEXT_HEIGHT;
         if (touchedItem >= 0 && touchedItem < totalMenuItems) {
-        selectedMenuItem = touchedItem;
-        drawSidebarMenu();
-        drawMainContent();
+            selectedMenuItem = touchedItem;
+            drawSidebarMenu();
+            drawMainContent();
         }
     } else {
-    // Handle touches in the main content area
+        // main content area
     }
 }
