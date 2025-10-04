@@ -17,9 +17,10 @@ class UIManager {
         static const int MAIN_AREA_HEIGHT = YMAX - HEADER_HEIGHT;
         static const int MESSAGE_AREA_HEIGHT = 40;
 
+        // Menu items
         const char* menuItems[5] = {"Status", "Items", "Data", "Radio", "Settings"};
-        int totalMenuItems = sizeof(menuItems) / sizeof(menuItems[0]);
         int selectedMenuItem = 0;
+        int totalMenuItems = sizeof(menuItems) / sizeof(menuItems[0]);
 
         void blinkLED(int delayTime);
 

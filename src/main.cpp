@@ -31,12 +31,6 @@ bool offline = false;
 // TFT Pins
 #define TFT_CS 17  
 
-
-// Menu items
-const char* menuItems[] = {"Status", "Items", "Data", "Radio"};
-int selectedMenuItem = 0;
-int totalMenuItems = sizeof(menuItems) / sizeof(menuItems[0]);
-
 // Debounce variables
 unsigned long lastButtonPress = 0;
 const unsigned long debounceDelay = 50; // milliseconds
@@ -158,28 +152,34 @@ unsigned long encoderInterval = 10; // ms
 unsigned long lastButtonCheck = 0;
 unsigned long buttonInterval = 10; // ms
 
+// Encoder stable tracking
+long stablePosition = 0;
+long lastReportedPosition = 0;
+
 void loop() {
   unsigned long now = millis();
 
   // Non-blocking encoder check
   if (now - lastEncoderCheck >= encoderInterval) {
-    long newPosition = myEnc->read()/4;
-    Serial.print("Raw encoder value: ");
-    Serial.println(newPosition);
-    if (newPosition != oldPosition) {
-      Serial.print("Encoder position changed: ");
-      Serial.print(oldPosition);
-      Serial.print(" -> ");
-      Serial.println(newPosition);
-      if (newPosition > oldPosition) {
-        Serial.println("Menu: Next item");
-        ui.selectNextMenuItem();
-      } else {
-        Serial.println("Menu: Previous item");
-        ui.selectPreviousMenuItem();
+    long newPosition = myEnc->read() / 4; // step resolution
+
+    // Update stable position if the encoder stays the same for one cycle
+    if (newPosition == stablePosition) {
+      // Only trigger if we've moved to a new detent
+      if (stablePosition != lastReportedPosition) {
+        if (stablePosition > lastReportedPosition) {
+          Serial.println("Menu: Next item");
+          ui.selectNextMenuItem();
+        } else {
+          Serial.println("Menu: Previous item");
+          ui.selectPreviousMenuItem();
+        }
+        lastReportedPosition = stablePosition;
       }
-      oldPosition = newPosition;
     }
+
+    // Always update stable candidate
+    stablePosition = newPosition;
     lastEncoderCheck = now;
   }
 
@@ -197,3 +197,5 @@ void loop() {
     lastButtonCheck = now;
   }
 }
+
+
