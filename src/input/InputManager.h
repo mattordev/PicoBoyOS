@@ -1,12 +1,14 @@
 #ifndef INPUT_MANAGER_H
 #define INPUT_MANAGER_H
 
+#include "../sys/PBOS_Config.h"
+
 #include <Encoder.h>
 #include <functional>
 
 class InputManager {
 public:
-    InputManager(int pinA, int pinB, int buttonPin);
+    InputManager(int pinA = PB_ENCODER_PIN_A, int pinB = PB_ENCODER_PIN_B, int buttonPin = PB_ENCODER_BUTTON_PIN);
 
     void begin();
     void update();
@@ -27,12 +29,12 @@ private:
 
     bool previousButtonState = HIGH;
     unsigned long lastButtonPress = 0;
-    const unsigned long debounceDelay = 50;
+    const unsigned long debounceDelay = PB_DEBOUNCE_DELAY;
 
     unsigned long lastEncoderCheck = 0;
-    unsigned long encoderInterval = 10; // ms
+    unsigned long encoderInterval = PB_ENCODER_INTERVAL; // ms
     unsigned long lastButtonCheck = 0;
-    unsigned long buttonInterval = 10; // ms
+    unsigned long buttonInterval = PB_BUTTON_INTERVAL; // ms
 
     // Callbacks
     std::function<void()> encoderCWCallback;

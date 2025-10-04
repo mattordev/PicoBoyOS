@@ -1,5 +1,6 @@
 #pragma once
 #include "../ui/UIManager.h"
+#include "../sys/PBOS_Config.h"
 
 class SensorManager {
 public:

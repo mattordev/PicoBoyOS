@@ -3,23 +3,19 @@
 NetworkManager::NetworkManager(UIManager &uiRef) : ui(uiRef) {}
 
 void NetworkManager::begin(const char* ssid_, const char* password_, unsigned long timeoutMs) {
-    // Store credentials and timeout
     ssid = ssid_;
     password = password_;
     timeout = timeoutMs;
 
-    // Set WiFi mode and start connection
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
-    // Track timing and state for async updates
     startTime = millis();
     started = true;
     finished = false;
     connected = false;
 
-    // Provide immediate feedback on the TFT
-    ui.printToTFT("System: Connecting to WiFi network " + String(ssid), 0); // 0 = no delay
+    ui.printToTFT("System: Connecting to WiFi network " + String(ssid), 0);
 }
 
 void NetworkManager::update() {

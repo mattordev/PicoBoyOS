@@ -15,7 +15,8 @@ float SensorManager::getTemperature() {
 
         ui.printToTFT("System: Temperature (ºC) = " + String(tempC), 2000);
 
-        if (tempC > -20.0 && tempC < 150.0) {
+        // Use config constants for validity
+        if (tempC > PB_TEMP_MIN_C && tempC < PB_TEMP_MAX_C) {
             break; // Valid reading
         }
     }
