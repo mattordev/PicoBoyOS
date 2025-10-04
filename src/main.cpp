@@ -10,6 +10,8 @@
 #include "ui/UIManager.h"
 #include "input/InputManager.h"
 #include "net/NetworkManager.h"
+#include "sys/SensorManager.h"
+
 
 
 // Hardware Vars
@@ -17,6 +19,7 @@ TFT_eSPI tft = TFT_eSPI();
 UIManager ui(tft); // Create an instance of UIManager
 InputManager input(12, 13, 14);
 NetworkManager net(ui); // Pass UI reference and optional timeout
+SensorManager sensors(ui);
 
 
 #define TOUCH_CS 22 // Chip select pin (T_CS) of touch screen
@@ -61,7 +64,9 @@ void s_boot() {
     ui.printToTFT("System: Starting PicoBoyOS v0.1", 2000);
     ui.printToTFT("System: Booting as new...", 2000);
     ui.printToTFT("System: Checking vitals...", 2000);
-    get_temp();
+    // Start SensorManager
+    sensors.begin();
+    sensors.getTemperature();
     delay(400);
 
     ui.printToTFT("System: Starting network...", 2000);
@@ -108,24 +113,6 @@ void s_boot() {
         ui.executeMenuItem();
     });
   }
-
-void get_temp() {
-  float tempC;
-
-  while (true) {
-    // Read the internal temperature
-    tempC = analogReadTemp(); // Get internal temperature
-
-    // Print temperature readings
-    ui.printToTFT("System: Temperature (ºC) = " + String(tempC), 2000); 
-
-    // Check if the temperature is within a reasonable range
-    if (tempC > -20.0 && tempC < 150.0) {
-      break; // Exit the loop if the temperature is valid
-    }
-  }
-}
-
 
 void loop() {
   // call input to update encoder and button states
