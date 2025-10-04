@@ -5,29 +5,28 @@
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 
+#include "secrets.h"  
 #include "main.h"
 #include "ui/UIManager.h"
 #include "input/InputManager.h"
+#include "net/NetworkManager.h"
 
 
 // Hardware Vars
 TFT_eSPI tft = TFT_eSPI();
 UIManager ui(tft); // Create an instance of UIManager
 InputManager input(12, 13, 14);
+NetworkManager net(ui); // Pass UI reference and optional timeout
+
+
 #define TOUCH_CS 22 // Chip select pin (T_CS) of touch screen
 XPT2046_Touchscreen ts(TOUCH_CS); // Initialize the touch screen with the CS pin
 
-// Wifi Vars
-#include "secrets.h"
-int wifiTimeout = 20000; // timeout in milliseconds
-bool offline = false;
 
 // TFT Pins
 #define TFT_CS 17  
 
 void setup() {
-
-
   // Start boot checks, power screen, check temperatures, log start up date
   s_boot();
 }
@@ -41,56 +40,59 @@ void blinkLED(int delayTime) {
 }
 
 void s_boot() {
-  // Start serial
-  Serial.begin(115200);
+    Serial.begin(115200);
 
-  
+    // SPI devices deselect
+    pinMode(TFT_CS, OUTPUT);
+    pinMode(TOUCH_CS, OUTPUT);
+    digitalWrite(TFT_CS, HIGH);
+    digitalWrite(TOUCH_CS, HIGH);
 
-  // Deselect all SPI devices
-  pinMode(TFT_CS, OUTPUT);
-  pinMode(TOUCH_CS, OUTPUT);
-  digitalWrite(TFT_CS, HIGH);
-  digitalWrite(TOUCH_CS, HIGH);
+    // TFT setup
+    tft.init();
+    tft.setRotation(1);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  // Start TFT
-  tft.init();
-  tft.setRotation(1);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    // Touchscreen init
+    ts.begin();
+    ts.setRotation(1);
 
-  // Initialize the touch screen
-  ts.begin();
-  ts.setRotation(1);
+    ui.printToTFT("System: Starting PicoBoyOS v0.1", 2000);
+    ui.printToTFT("System: Booting as new...", 2000);
+    ui.printToTFT("System: Checking vitals...", 2000);
+    get_temp();
+    delay(400);
 
-  ui.printToTFT("System: Starting PicoBoyOS v0.1", 2000); // Add a delay of 2000 milliseconds
-  ui.printToTFT("System: Booting as new...", 2000); // Add a delay of 2000 milliseconds
-  ui.printToTFT("System: Checking vitals...", 2000);
-  get_temp();
-  delay(400);
+    ui.printToTFT("System: Starting network...", 2000);
+    net.begin(ssid, password, 20000);
 
-  ui.printToTFT("System: Checking active data stream...", 2000);
-  // Check WiFi connection, connect if possible.
-  offline = setup_wifi();
+    // Wait for network result (or timeout) before starting UI
+    unsigned long start = millis();
+    while (!net.isFinished() && millis() - start < 21000) { // slight buffer over timeout
+        net.update();
+        delay(10); // tiny delay to allow TFT prints to render
+    }
 
-  ui.printToTFT("System: Boot complete. Starting UI & Input", 2500);
+    if (net.isConnected()) {
+        ui.printToTFT("System: WiFi connected!", 1000);
+    } else {
+        ui.printToTFT("System: Running offline mode.", 1000);
+    }
 
-  // Blink LED to indicate boot complete
-  blinkLED(100);
-  delay(100);
-  blinkLED(100);
-  delay(100);
-  blinkLED(100);
-  delay(100);
-  blinkLED(100);
+    ui.printToTFT("System: Boot complete. Starting UI & Input", 2500);
 
+    // Blink LED to indicate boot complete
+    for (int i = 0; i < 4; i++) {
+        blinkLED(100);
+        delay(100);
+    }
 
-  // Start the UI
-  ui.startUI();
+    // Start UI and Input
+    ui.startUI();
+    input.begin();
 
-  // Start Input Manager
-  input.begin();
-
-  // Register input callbacks
+    // Register input callbacks
     input.onEncoderClockwise([&](){
         Serial.println("Encoder CW → Next menu item");
         ui.selectNextMenuItem();
@@ -105,28 +107,7 @@ void s_boot() {
         Serial.println("Encoder Button → Execute menu item");
         ui.executeMenuItem();
     });
-}
-
-bool setup_wifi() {
-  // Operate in WiFi station mode
-  WiFi.mode(WIFI_STA);
-
-  WiFi.setTimeout(wifiTimeout);
-  WiFi.begin(ssid, password);
-
-  if (WiFi.waitForConnectResult() == WL_CONNECTED) {
-    // Connection established
-    ui.printToTFT("System: PicoBoy is connected to WiFi network " + String(WiFi.SSID()), 2000); 
-
-    // Print IP Address
-    ui.printToTFT("System: Assigned IP Address: " + WiFi.localIP().toString(), 2000); 
-    return true;
-  } else {
-    // No connection established
-    ui.printToTFT("System: PicoBoy is NOT connected to a WiFi network. Running in offline mode.", 2000); 
-    return false;
   }
-}
 
 void get_temp() {
   float tempC;
@@ -149,4 +130,6 @@ void get_temp() {
 void loop() {
   // call input to update encoder and button states
   input.update();
+  // call network to update connection state
+  net.update();
 }
