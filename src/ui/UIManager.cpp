@@ -1,7 +1,13 @@
 #include "UIManager.h"
 #include <Arduino.h>
 
+
+
 UIManager::UIManager(TFT_eSPI& display) : tft(display) {} // Constructor
+
+void UIManager::attachSensors(SensorManager* sensorManager) {
+    sensors = sensorManager;
+}
 
 // Initialize TFT hardware
 void UIManager::initTFT() {
@@ -28,6 +34,11 @@ void UIManager::printToTFT(String message, int delayTime, int textSize) {
     for (int i = 0; i < (YMAX / TEXT_HEIGHT); i++) {
         tft.setCursor(0, i * TEXT_HEIGHT);
         tft.print(lines[i]);
+    }
+    
+    // 💡 blink LED each time we print to the TFT
+    if (sensors != nullptr) {
+        sensors->blinkLED(30); // small blink to show activity
     }
 
     delay(delayTime);

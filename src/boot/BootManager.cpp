@@ -28,6 +28,7 @@ void BootManager::runBoot(const char* ssid, const char* password) {
     digitalWrite(PB_TOUCH_CS, HIGH);
 
     ui.initTFT();
+    ui.attachSensors(&sensors);
 
     ui.printToTFT("System: Starting PicoBoyOS v0.1", 2000);
     ui.printToTFT("System: Booting as new...", 2000);
@@ -35,6 +36,7 @@ void BootManager::runBoot(const char* ssid, const char* password) {
 
     // Sensor init & temperature read
     sensors.begin();
+    
     sensors.getTemperature();
     delay(400);
 

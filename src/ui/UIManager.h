@@ -2,10 +2,14 @@
 #define UI_MANAGER_H
 
 #include <TFT_eSPI.h> // Hardware-specific library
+#include "../sys/SensorManager.h"
+
+class SensorManager; // 👈 forward declare so we can reference it
 
 class UIManager {
 private:
     TFT_eSPI& tft; // Reference to the TFT display object
+    SensorManager* sensors = nullptr; // pointer to sensors, set later
 
     static const int TEXT_HEIGHT = 16;
     static const int YMAX = 320;
@@ -44,6 +48,8 @@ public:
 
     // Handle touchscreen input
     void handleTouch(int x, int y);
+
+    void attachSensors(SensorManager* sensorManager);
 };
 
 #endif

@@ -1,18 +1,16 @@
 #pragma once
-#include "../ui/UIManager.h"
 #include "../sys/PBOS_Config.h"
+
+// ✅ Forward declare instead of including UIManager.h
+class UIManager;
 
 class SensorManager {
 public:
-    SensorManager(UIManager &uiRef);
+    explicit SensorManager(UIManager &uiRef);
 
-    // Initialize sensors
     void begin();
-
-    // Get internal temperature in °C
     float getTemperature();
-
-    // Optional: poll sensors (for async expansion)
+    void blinkLED(int delayTime = 100);  // lowercase for consistency
     void update();
 
 private:

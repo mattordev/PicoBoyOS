@@ -28,15 +28,6 @@ void setup() {
     boot.runBoot(ssid, password);
 }
 
-void blinkLED(int delayTime) {
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(delayTime);
-    digitalWrite(LED_BUILTIN, LOW);
-}
-
-
-
 void loop() {
     input.update();
     net.update();

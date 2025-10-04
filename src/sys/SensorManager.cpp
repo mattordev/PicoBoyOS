@@ -1,17 +1,25 @@
 #include "SensorManager.h"
+#include "../ui/UIManager.h"   // full definition only here
 #include <Arduino.h>
 
 SensorManager::SensorManager(UIManager &uiRef) : ui(uiRef) {}
 
 void SensorManager::begin() {
-    // Any sensor initialization goes here
-    // For now, just the internal temp is enough
+    // Initialize any sensors (or LED for now)
+    pinMode(LED_BUILTIN, OUTPUT);
+}
+
+// Simple onboard LED blink
+void SensorManager::blinkLED(int delayTime) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(delayTime);
+    digitalWrite(LED_BUILTIN, LOW);
 }
 
 float SensorManager::getTemperature() {
     float tempC;
     while (true) {
-        tempC = analogReadTemp(); // Internal temp reading
+        tempC = analogReadTemp(); // Internal temperature sensor (RP2040)
 
         ui.printToTFT("System: Temperature (ºC) = " + String(tempC), 2000);
 
@@ -24,5 +32,5 @@ float SensorManager::getTemperature() {
 }
 
 void SensorManager::update() {
-    // Placeholder for async polling if needed later
+    // Placeholder for async sensor polling (future expansion)
 }
