@@ -5,23 +5,17 @@
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 
-#define ENCODER_DO_NOT_USE_INTERRUPTS
-#include <Encoder.h>
 #include "main.h"
 #include "ui/UIManager.h"
+#include "input/InputManager.h"
 
-// Encoder Pins
-#define ENCODER_PIN_A      12    // EC11 phase A
-#define ENCODER_PIN_B      13    // EC11 phase B
-#define ENCODER_BUTTON_PIN 14    // EC11 push-button
-bool previousButtonState = HIGH; // Initialize the previous button state as released
 
 // Hardware Vars
 TFT_eSPI tft = TFT_eSPI();
 UIManager ui(tft); // Create an instance of UIManager
+InputManager input(12, 13, 14);
 #define TOUCH_CS 22 // Chip select pin (T_CS) of touch screen
 XPT2046_Touchscreen ts(TOUCH_CS); // Initialize the touch screen with the CS pin
-Encoder* myEnc; // Initialize the encoder
 
 // Wifi Vars
 #include "secrets.h"
@@ -31,19 +25,8 @@ bool offline = false;
 // TFT Pins
 #define TFT_CS 17  
 
-// Debounce variables
-unsigned long lastButtonPress = 0;
-const unsigned long debounceDelay = 50; // milliseconds
-
-// Encoder position
-long oldPosition = -999;
-
 void setup() {
-  pinMode(ENCODER_PIN_A, INPUT_PULLUP);
-  pinMode(ENCODER_PIN_B, INPUT_PULLUP);
-  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
 
-  myEnc = new Encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 
   // Start boot checks, power screen, check temperatures, log start up date
   s_boot();
@@ -61,8 +44,7 @@ void s_boot() {
   // Start serial
   Serial.begin(115200);
 
-  myEnc = new Encoder (12, 13);
-  pinMode(ENCODER_BUTTON_PIN, INPUT_PULLUP);
+  
 
   // Deselect all SPI devices
   pinMode(TFT_CS, OUTPUT);
@@ -90,7 +72,7 @@ void s_boot() {
   // Check WiFi connection, connect if possible.
   offline = setup_wifi();
 
-  ui.printToTFT("System: Boot complete. Starting UI...", 2500);
+  ui.printToTFT("System: Boot complete. Starting UI & Input", 2500);
 
   // Blink LED to indicate boot complete
   blinkLED(100);
@@ -104,6 +86,25 @@ void s_boot() {
 
   // Start the UI
   ui.startUI();
+
+  // Start Input Manager
+  input.begin();
+
+  // Register input callbacks
+    input.onEncoderClockwise([&](){
+        Serial.println("Encoder CW → Next menu item");
+        ui.selectNextMenuItem();
+    });
+
+    input.onEncoderCounterClockwise([&](){
+        Serial.println("Encoder CCW → Previous menu item");
+        ui.selectPreviousMenuItem();
+    });
+
+    input.onButtonPress([&](){
+        Serial.println("Encoder Button → Execute menu item");
+        ui.executeMenuItem();
+    });
 }
 
 bool setup_wifi() {
@@ -144,58 +145,8 @@ void get_temp() {
   }
 }
 
-// Non-blocking timing variables
-unsigned long lastBlink = 0;
-unsigned long blinkInterval = 100; // ms
-unsigned long lastEncoderCheck = 0;
-unsigned long encoderInterval = 10; // ms
-unsigned long lastButtonCheck = 0;
-unsigned long buttonInterval = 10; // ms
-
-// Encoder stable tracking
-long stablePosition = 0;
-long lastReportedPosition = 0;
 
 void loop() {
-  unsigned long now = millis();
-
-  // Non-blocking encoder check
-  if (now - lastEncoderCheck >= encoderInterval) {
-    long newPosition = myEnc->read() / 4; // step resolution
-
-    // Update stable position if the encoder stays the same for one cycle
-    if (newPosition == stablePosition) {
-      // Only trigger if we've moved to a new detent
-      if (stablePosition != lastReportedPosition) {
-        if (stablePosition > lastReportedPosition) {
-          Serial.println("Menu: Next item");
-          ui.selectNextMenuItem();
-        } else {
-          Serial.println("Menu: Previous item");
-          ui.selectPreviousMenuItem();
-        }
-        lastReportedPosition = stablePosition;
-      }
-    }
-
-    // Always update stable candidate
-    stablePosition = newPosition;
-    lastEncoderCheck = now;
-  }
-
-  // Non-blocking button check
-  if (now - lastButtonCheck >= buttonInterval) {
-    bool currentButtonState = digitalRead(ENCODER_BUTTON_PIN);
-    if (currentButtonState == LOW && previousButtonState == HIGH) {
-      Serial.println("Encoder button pressed");
-      if (now - lastButtonPress > debounceDelay) {
-        ui.executeMenuItem();
-        lastButtonPress = now;
-      }
-    }
-    previousButtonState = currentButtonState;
-    lastButtonCheck = now;
-  }
+  // call input to update encoder and button states
+  input.update();
 }
-
-
